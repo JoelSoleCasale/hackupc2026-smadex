@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -241,3 +243,51 @@ def test_topk_score_all_top_k_only(mini_summary, single_segment_corr):
     assert isinstance(scores, pd.Series)
     assert len(scores) == 3
     assert scores.is_monotonic_decreasing
+
+
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+CORR_PATH = DATA_DIR / "correlations" / "correlations_statistical_perf_score.parquet"
+
+
+@pytest.mark.skipif(
+    not CORR_PATH.exists(),
+    reason="Pre-computed correlations not available — run scripts/precompute_correlations.py first",
+)
+def test_linear_scorer_integration_real_data():
+    summary = pd.read_csv(DATA_DIR / "creative_summary.csv")
+    correlations = pd.read_parquet(CORR_PATH)
+
+    scorer = LinearFitnessScorer()
+    scores = scorer.score_all(
+        creative_summary=summary,
+        correlations=correlations,
+        target_segments=[("country", "US")],
+    )
+
+    assert isinstance(scores, pd.Series)
+    assert len(scores) == 1080
+    assert scores.index.name == "creative_id"
+    assert scores.is_monotonic_decreasing
+    assert scores.notna().all()
+    assert np.isfinite(scores.values).all()
+
+
+@pytest.mark.skipif(
+    not CORR_PATH.exists(),
+    reason="Pre-computed correlations not available — run scripts/precompute_correlations.py first",
+)
+def test_all_scorers_return_valid_series_real_data():
+    summary = pd.read_csv(DATA_DIR / "creative_summary.csv")
+    correlations = pd.read_parquet(CORR_PATH)
+    target = [("country", "US"), ("country", "CA"), ("os", "iOS")]
+
+    scorers = [
+        LinearFitnessScorer(),
+        SharpeCorrelationScorer(),
+        TopKFitnessScorer(k=10),
+    ]
+    for scorer in scorers:
+        scores = scorer.score_all(summary, correlations, target)
+        assert len(scores) == 1080, f"{type(scorer).__name__} returned wrong length"
+        assert scores.is_monotonic_decreasing, f"{type(scorer).__name__} not sorted"
+        assert np.isfinite(scores.values).all(), f"{type(scorer).__name__} has non-finite scores"
