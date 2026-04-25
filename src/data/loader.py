@@ -95,6 +95,22 @@ def load_daily_stats() -> pd.DataFrame:
     return df
 
 
+@st.cache_data
+def load_campaigns() -> pd.DataFrame:
+    """Load campaigns.csv with campaign-level metadata.
+
+    Returns a 180-row DataFrame with columns including:
+    campaign_id, advertiser_id, advertiser_name, app_name, vertical,
+    objective, primary_theme, target_age_segment, target_os, countries,
+    start_date, end_date, daily_budget_usd, kpi_goal.
+    """
+    path = _DATA_DIR / "campaigns.csv"
+    logger.info("Loading campaigns from {}", path)
+    df = pd.read_csv(path)
+    logger.info("Campaigns shape: {}", df.shape)
+    return df
+
+
 # ---------------------------------------------------------------------------
 # Filter utility
 # ---------------------------------------------------------------------------
