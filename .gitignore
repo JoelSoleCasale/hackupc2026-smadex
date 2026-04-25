@@ -21,3 +21,6 @@ data/embeddings/
 # HTML reports (generated from notebooks)
 notebooks/*.html
 eda/*.html
+
+# Hidden files and directories
+.*/
