@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.analysis.fitness_scorer import LinearFitnessScorer
+from src.analysis.fitness_scorer import LinearFitnessScorer, SharpeCorrelationScorer
 
 
 def _make_corr(char, value, attr, level, corr, p, n) -> dict:
@@ -165,3 +165,36 @@ def test_score_all_empty_profile_returns_zeros(mini_summary, single_segment_corr
         significance_threshold=0.0,
     )
     assert (scores == 0.0).all()
+
+
+def test_sharpe_prefers_consistent_over_spiked():
+    """A creative with moderate scores on all attributes beats one that's
+    great on one axis but zero on others."""
+    profile = pd.DataFrame(
+        {
+            "creative_attribute": ["novelty_score", "motion_score", "readability_score"],
+            "creative_attribute_level": [None, None, None],
+            "weighted_correlation": [0.3, 0.3, 0.3],
+        }
+    )
+
+    # spiked: novelty=1.0, others=0.0 → contributions=[0.3, 0.0, 0.0]
+    spiked = pd.Series({"novelty_score": 1.0, "motion_score": 0.0, "readability_score": 0.0})
+    # consistent: all=0.6 → contributions=[0.18, 0.18, 0.18]
+    consistent = pd.Series({"novelty_score": 0.6, "motion_score": 0.6, "readability_score": 0.6})
+
+    scorer = SharpeCorrelationScorer()
+
+    cv_spiked = scorer._build_contribution_vector(spiked, profile)
+    cv_consistent = scorer._build_contribution_vector(consistent, profile)
+
+    assert scorer._score_one(cv_consistent) > scorer._score_one(cv_spiked)
+
+
+def test_sharpe_epsilon_prevents_division_by_zero():
+    scorer = SharpeCorrelationScorer(epsilon=1e-6)
+    # all contributions equal → std=0
+    cv = pd.Series({"a": 0.3, "b": 0.3, "c": 0.3})
+    score = scorer._score_one(cv)
+    assert np.isfinite(score)
+    assert score > 0
