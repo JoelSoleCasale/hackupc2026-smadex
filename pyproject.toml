@@ -53,3 +53,6 @@ ignore = ["E501", "N806", "N816"]
 
 [tool.ruff.format]
 line-ending = "lf"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
