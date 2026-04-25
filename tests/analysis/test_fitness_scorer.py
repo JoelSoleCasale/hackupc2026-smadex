@@ -43,3 +43,62 @@ def test_build_weighted_profile_weighted_avg(two_segment_corr):
     assert len(profile) == 1
     assert profile.iloc[0]["creative_attribute"] == "novelty_score"
     assert np.isclose(profile.iloc[0]["weighted_correlation"], 50 / 150)
+
+
+@pytest.fixture
+def simple_profile() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "creative_attribute": ["novelty_score", "has_ugc_style", "theme"],
+            "creative_attribute_level": [None, None, "gameplay"],
+            "weighted_correlation": [0.3, -0.1, 0.2],
+        }
+    )
+
+
+def test_contribution_numeric(simple_profile):
+    scorer = LinearFitnessScorer()
+    creative = pd.Series(
+        {"creative_id": 1, "novelty_score": 0.8, "has_ugc_style": 0.0, "theme": "other"}
+    )
+    cv = scorer._build_contribution_vector(creative, simple_profile)
+    # numeric: 0.8 × 0.3 = 0.24
+    assert np.isclose(cv["novelty_score"], 0.24)
+
+
+def test_contribution_binary(simple_profile):
+    scorer = LinearFitnessScorer()
+    creative = pd.Series(
+        {"creative_id": 1, "novelty_score": 0.0, "has_ugc_style": 1.0, "theme": "other"}
+    )
+    cv = scorer._build_contribution_vector(creative, simple_profile)
+    # binary: 1.0 × (−0.1) = −0.1
+    assert np.isclose(cv["has_ugc_style"], -0.1)
+
+
+def test_contribution_categorical_match(simple_profile):
+    scorer = LinearFitnessScorer()
+    creative = pd.Series(
+        {"creative_id": 1, "novelty_score": 0.0, "has_ugc_style": 0.0, "theme": "gameplay"}
+    )
+    cv = scorer._build_contribution_vector(creative, simple_profile)
+    # categorical match: 1.0 × 0.2 = 0.2
+    assert np.isclose(cv["theme__gameplay"], 0.2)
+
+
+def test_contribution_categorical_no_match(simple_profile):
+    scorer = LinearFitnessScorer()
+    creative = pd.Series(
+        {"creative_id": 1, "novelty_score": 0.0, "has_ugc_style": 0.0, "theme": "family"}
+    )
+    cv = scorer._build_contribution_vector(creative, simple_profile)
+    # no match → key absent (not padded with 0)
+    assert "theme__gameplay" not in cv.index
+
+
+def test_contribution_missing_attribute(simple_profile):
+    scorer = LinearFitnessScorer()
+    # creative has no novelty_score column
+    creative = pd.Series({"creative_id": 1, "has_ugc_style": 1.0, "theme": "gameplay"})
+    cv = scorer._build_contribution_vector(creative, simple_profile)
+    assert "novelty_score" not in cv.index
