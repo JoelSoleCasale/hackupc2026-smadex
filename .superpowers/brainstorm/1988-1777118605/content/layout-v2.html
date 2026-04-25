@@ -1,0 +1,318 @@
+<style>
+  .wf { font-family: monospace; font-size: 11px; }
+  .wf-page { background: #0a1628; border-radius: 8px; padding: 16px; color: #c8d8f0; }
+  .wf-topbar { background: #0d2040; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #1e6fd9; }
+  .wf-company-label { color: #7aa8d8; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .wf-company-select { background: #1e3a5f; border: 1px solid #2a5a9f; border-radius: 4px; padding: 5px 12px; color: #e0f0ff; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .wf-company-badge { background: #1e6fd9; border-radius: 3px; padding: 2px 6px; font-size: 9px; color: #fff; }
+  .wf-body { display: flex; gap: 10px; }
+  .wf-sidebar { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+  .wf-filter-block { background: #0d2040; border-radius: 6px; padding: 8px 10px; }
+  .wf-filter-title { color: #7aa8d8; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .wf-tag { display: inline-block; background: #1e3a5f; border-radius: 3px; padding: 2px 6px; margin: 2px; font-size: 10px; color: #acd; cursor: pointer; }
+  .wf-tag.selected { background: #1e6fd9; color: #fff; }
+  .wf-map { background: #0d2040; border-radius: 6px; padding: 8px; text-align: center; position: relative; min-height: 110px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  .wf-map-label { color: #7aa8d8; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .wf-map-img { width: 180px; height: 80px; background: linear-gradient(135deg, #0d2040 0%, #0d2040 100%); border-radius: 4px; position: relative; overflow: hidden; }
+  .wf-continent { position: absolute; background: #1e3a5f; border-radius: 2px; cursor: pointer; }
+  .wf-continent.active { background: #1e6fd9; }
+  .wf-main { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .wf-kpi-row { display: flex; gap: 6px; }
+  .wf-kpi { flex: 1; background: #0d2040; border-radius: 6px; padding: 8px 10px; border-left: 3px solid #1e6fd9; }
+  .wf-kpi-name { color: #7aa8d8; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .wf-kpi-val { color: #e0f0ff; font-size: 16px; font-weight: bold; }
+  .wf-kpi-vs { font-size: 9px; margin-top: 2px; }
+  .wf-kpi-vs.up { color: #4caf50; }
+  .wf-kpi-vs.dn { color: #ef5350; }
+  .wf-kpi-vs.neu { color: #7aa8d8; }
+  .wf-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wf-chart { background: #0d2040; border-radius: 6px; padding: 8px 10px; min-height: 90px; }
+  .wf-chart-title { color: #7aa8d8; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .wf-bar { height: 8px; border-radius: 3px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+  .wf-bar-fill { height: 8px; border-radius: 3px; background: #1e6fd9; }
+  .wf-bar-fill.peer { background: #2a5a9f; opacity: 0.5; }
+  .wf-bar-label { color: #8ab; font-size: 9px; width: 55px; flex-shrink: 0; }
+  .wf-scatter-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 1px; }
+  .wf-scatter-dot.you { background: #1e6fd9; width: 9px; height: 9px; border: 1px solid #5af; }
+  .wf-scatter-dot.peer { background: #2a5a9f; opacity: 0.6; }
+  .wf-violin { height: 50px; background: #0a1628; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px; }
+  .wf-vshape { width: 18px; height: 40px; border-radius: 9px; opacity: 0.7; }
+  .wf-legend { display: flex; gap: 10px; font-size: 9px; color: #7aa8d8; margin-top: 4px; }
+  .wf-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+  .wf-creative-strip { background: #0d2040; border-radius: 6px; padding: 8px 10px; }
+  .wf-creative-thumb { display: inline-block; width: 36px; height: 36px; background: #1e3a5f; border-radius: 4px; margin: 3px; vertical-align: top; border: 1px solid #2a5a9f; cursor: pointer; font-size: 8px; color: #5af; display: inline-flex; align-items: center; justify-content: center; }
+  .wf-creative-thumb.top { border-color: #1e6fd9; background: #0d2a50; }
+  .wf-section-label { color: #7aa8d8; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+</style>
+
+<h2>Proposed Layout: Company-First Explorer</h2>
+<p class="subtitle">Your vision translated into a wireframe — advertiser selector at top, map + campaign filters in sidebar, KPIs + comparison charts in main area</p>
+
+<div class="wf">
+  <div class="wf-page">
+
+    <!-- TOP BAR: Company Selector -->
+    <div class="wf-topbar">
+      <div>
+        <div class="wf-company-label">Advertiser</div>
+        <div class="wf-company-select">
+          TechFlow Studios &nbsp; <span class="wf-company-badge">Gaming</span>
+          &nbsp; ▾
+        </div>
+      </div>
+      <div style="color:#2a5a9f;font-size:18px">|</div>
+      <div style="color:#7aa8d8;font-size:10px">Comparing against <strong style="color:#e0f0ff">5 peer advertisers</strong> in <strong style="color:#e0f0ff">Gaming</strong> vertical</div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <div class="wf-tag selected">Perf Score ▾</div>
+        <span style="color:#7aa8d8;font-size:9px;align-self:center">compare by</span>
+      </div>
+    </div>
+
+    <div class="wf-body">
+
+      <!-- SIDEBAR: Map + Campaigns + OS -->
+      <div class="wf-sidebar">
+
+        <!-- World Map Country Picker -->
+        <div class="wf-map">
+          <div class="wf-map-label">Countries / Regions</div>
+          <div class="wf-map-img">
+            <!-- simplified continent blobs -->
+            <div class="wf-continent active" style="width:38px;height:22px;top:20px;left:10px;border-radius:4px 6px 3px 5px"></div>
+            <div class="wf-continent active" style="width:28px;height:28px;top:12px;left:52px;border-radius:3px 8px 5px 3px"></div>
+            <div class="wf-continent" style="width:18px;height:14px;top:30px;left:84px;border-radius:50% 40% 60% 30%"></div>
+            <div class="wf-continent active" style="width:32px;height:20px;top:14px;left:106px;border-radius:5px 3px 8px 4px"></div>
+            <div class="wf-continent" style="width:20px;height:26px;top:18px;left:142px;border-radius:4px 4px 6px 5px"></div>
+            <div class="wf-continent" style="width:14px;height:12px;top:50px;left:80px;border-radius:50%"></div>
+          </div>
+          <div style="margin-top:6px;font-size:9px;color:#7aa8d8">Click to select · All selected by default</div>
+          <div style="margin-top:4px">
+            <span class="wf-tag selected" style="font-size:8px">🌎 Americas</span>
+            <span class="wf-tag selected" style="font-size:8px">🌍 Europe</span>
+            <span class="wf-tag" style="font-size:8px">🌏 APAC</span>
+          </div>
+        </div>
+
+        <!-- Campaign Multi-Select -->
+        <div class="wf-filter-block">
+          <div class="wf-filter-title">Campaigns</div>
+          <div class="wf-tag selected">Camp. A</div>
+          <div class="wf-tag selected">Camp. B</div>
+          <div class="wf-tag">Camp. C</div>
+          <div class="wf-tag">Camp. D</div>
+          <div class="wf-tag">Camp. E</div>
+        </div>
+
+        <!-- Creatives Multi-Select (scoped to campaigns) -->
+        <div class="wf-filter-block">
+          <div class="wf-filter-title">Creatives <span style="color:#3a6a9f">(in selected campaigns)</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px">
+            <div class="wf-creative-thumb top">★</div>
+            <div class="wf-creative-thumb top">▶</div>
+            <div class="wf-creative-thumb">·</div>
+            <div class="wf-creative-thumb">·</div>
+            <div class="wf-creative-thumb">·</div>
+            <div class="wf-creative-thumb">·</div>
+            <div class="wf-creative-thumb">·</div>
+            <div class="wf-creative-thumb">·</div>
+          </div>
+          <div style="font-size:9px;color:#3a6a9f;margin-top:4px">12 creatives · all selected</div>
+        </div>
+
+        <!-- OS Filter -->
+        <div class="wf-filter-block">
+          <div class="wf-filter-title">OS</div>
+          <span class="wf-tag selected">All</span>
+          <span class="wf-tag">Android</span>
+          <span class="wf-tag">iOS</span>
+        </div>
+
+        <!-- Format Filter -->
+        <div class="wf-filter-block">
+          <div class="wf-filter-title">Format</div>
+          <span class="wf-tag selected">All</span>
+          <span class="wf-tag">Interstitial</span>
+          <span class="wf-tag">Rewarded</span>
+          <span class="wf-tag">Static</span>
+        </div>
+
+      </div>
+
+      <!-- MAIN CONTENT AREA -->
+      <div class="wf-main">
+
+        <!-- KPI Summary Cards -->
+        <div class="wf-kpi-row">
+          <div class="wf-kpi" style="border-color:#1e6fd9">
+            <div class="wf-kpi-name">Perf Score</div>
+            <div class="wf-kpi-val">0.71</div>
+            <div class="wf-kpi-vs up">▲ top 20% of Gaming</div>
+          </div>
+          <div class="wf-kpi" style="border-color:#26a69a">
+            <div class="wf-kpi-name">CTR</div>
+            <div class="wf-kpi-val">0.58%</div>
+            <div class="wf-kpi-vs up">▲ +0.12pp vs peers</div>
+          </div>
+          <div class="wf-kpi" style="border-color:#7c4dff">
+            <div class="wf-kpi-name">CVR</div>
+            <div class="wf-kpi-val">19.4%</div>
+            <div class="wf-kpi-vs dn">▼ -1.8pp vs peers</div>
+          </div>
+          <div class="wf-kpi" style="border-color:#ff9800">
+            <div class="wf-kpi-name">ROAS</div>
+            <div class="wf-kpi-val">2.8×</div>
+            <div class="wf-kpi-vs neu">≈ sector median</div>
+          </div>
+          <div class="wf-kpi" style="border-color:#ef5350">
+            <div class="wf-kpi-name">Spend</div>
+            <div class="wf-kpi-val">$48K</div>
+            <div class="wf-kpi-vs neu">selected period</div>
+          </div>
+        </div>
+
+        <!-- Chart Grid -->
+        <div class="wf-charts">
+
+          <!-- Chart 1: KPI Distribution vs. Sector Peers -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">Perf Score — You vs. Gaming Peers</div>
+            <div style="padding:4px 0">
+              <div class="wf-bar"><div class="wf-bar-label">TechFlow ★</div><div class="wf-bar-fill" style="width:71%"></div><span style="color:#e0f0ff;font-size:9px">0.71</span></div>
+              <div class="wf-bar"><div class="wf-bar-label">Peer 2</div><div class="wf-bar-fill peer" style="width:65%"></div><span style="color:#5a8ab8;font-size:9px">0.65</span></div>
+              <div class="wf-bar"><div class="wf-bar-label">Peer 3</div><div class="wf-bar-fill peer" style="width:60%"></div><span style="color:#5a8ab8;font-size:9px">0.60</span></div>
+              <div class="wf-bar"><div class="wf-bar-label">Peer 4</div><div class="wf-bar-fill peer" style="width:55%"></div><span style="color:#5a8ab8;font-size:9px">0.55</span></div>
+              <div class="wf-bar"><div class="wf-bar-label">Peer 5</div><div class="wf-bar-fill peer" style="width:48%"></div><span style="color:#5a8ab8;font-size:9px">0.48</span></div>
+              <div class="wf-bar"><div class="wf-bar-label">Peer 6</div><div class="wf-bar-fill peer" style="width:42%"></div><span style="color:#5a8ab8;font-size:9px">0.42</span></div>
+            </div>
+            <div class="wf-legend"><span><span class="wf-legend-dot" style="background:#1e6fd9"></span>You</span><span><span class="wf-legend-dot" style="background:#2a5a9f"></span>Sector peers</span></div>
+          </div>
+
+          <!-- Chart 2: CTR by Country Heatmap -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">CTR by Country (selected region)</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:4px 0">
+              <div style="background:#0a4a9f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#acd">US<br><strong>0.72</strong></div>
+              <div style="background:#1e6fd9;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#fff">GB<br><strong>0.68</strong></div>
+              <div style="background:#1a4a8f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#acd">DE<br><strong>0.55</strong></div>
+              <div style="background:#0d2a5f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#7ab">FR<br><strong>0.48</strong></div>
+              <div style="background:#0d1f3f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#5a8">ES<br><strong>0.41</strong></div>
+              <div style="background:#0a3a8f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#acd">CA<br><strong>0.63</strong></div>
+              <div style="background:#0d1a3f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#5a7">MX<br><strong>0.38</strong></div>
+              <div style="background:#1560c0;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#cde">AU<br><strong>0.61</strong></div>
+              <div style="background:#0d2040;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#5a8">IT<br><strong>0.44</strong></div>
+              <div style="background:#0a2a6f;border-radius:3px;padding:3px;text-align:center;font-size:8px;color:#9ac">NL<br><strong>0.58</strong></div>
+            </div>
+            <div style="font-size:8px;color:#3a6a9f;margin-top:2px">Darker blue = lower CTR</div>
+          </div>
+
+          <!-- Chart 3: KPI Distribution (violin / box) -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">Creative Perf Score Distribution</div>
+            <div class="wf-violin">
+              <div style="text-align:center;font-size:8px;color:#7aa8d8">You</div>
+              <div class="wf-vshape" style="background:linear-gradient(to bottom,#1e6fd9 0%,#0a3a8f 40%,#1e6fd9 100%);width:22px"></div>
+              <div style="font-size:18px;color:#1e6fd9;line-height:1">|</div>
+              <div class="wf-vshape" style="background:linear-gradient(to bottom,#2a5a9f 0%,#0a2a6f 50%,#2a5a9f 100%);opacity:0.5"></div>
+              <div style="text-align:center;font-size:8px;color:#7aa8d8">Sector</div>
+            </div>
+            <div class="wf-legend" style="justify-content:center"><span><span class="wf-legend-dot" style="background:#1e6fd9"></span>Your creatives</span><span><span class="wf-legend-dot" style="background:#2a5a9f;opacity:0.5"></span>All sector creatives</span></div>
+          </div>
+
+          <!-- Chart 4: Format Performance Breakdown -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">Avg CTR by Format (you vs. peers)</div>
+            <div style="padding:4px 0">
+              <div style="font-size:9px;color:#7aa8d8;margin-bottom:3px">Interstitial</div>
+              <div style="display:flex;gap:2px;margin-bottom:4px">
+                <div style="background:#1e6fd9;height:10px;border-radius:2px;width:62%"></div>
+                <div style="background:#2a5a9f;height:10px;border-radius:2px;width:50%;opacity:0.5"></div>
+              </div>
+              <div style="font-size:9px;color:#7aa8d8;margin-bottom:3px">Rewarded Video</div>
+              <div style="display:flex;gap:2px;margin-bottom:4px">
+                <div style="background:#1e6fd9;height:10px;border-radius:2px;width:48%"></div>
+                <div style="background:#2a5a9f;height:10px;border-radius:2px;width:55%;opacity:0.5"></div>
+              </div>
+              <div style="font-size:9px;color:#7aa8d8;margin-bottom:3px">Static</div>
+              <div style="display:flex;gap:2px">
+                <div style="background:#1e6fd9;height:10px;border-radius:2px;width:38%"></div>
+                <div style="background:#2a5a9f;height:10px;border-radius:2px;width:42%;opacity:0.5"></div>
+              </div>
+            </div>
+            <div class="wf-legend"><span><span class="wf-legend-dot" style="background:#1e6fd9"></span>You</span><span><span class="wf-legend-dot" style="background:#2a5a9f"></span>Peers avg</span></div>
+          </div>
+
+          <!-- Chart 5: CTR/CVR scatter — creatives -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">CTR vs. CVR — Each Creative</div>
+            <div style="position:relative;height:60px;background:#0a1628;border-radius:4px;padding:4px;overflow:hidden">
+              <!-- peer dots -->
+              <span class="wf-scatter-dot peer" style="position:absolute;left:18%;top:40%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:32%;top:25%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:45%;top:55%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:60%;top:30%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:22%;top:65%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:70%;top:50%"></span>
+              <span class="wf-scatter-dot peer" style="position:absolute;left:52%;top:70%"></span>
+              <!-- your creatives -->
+              <span class="wf-scatter-dot you" style="position:absolute;left:68%;top:18%"></span>
+              <span class="wf-scatter-dot you" style="position:absolute;left:55%;top:28%"></span>
+              <span class="wf-scatter-dot you" style="position:absolute;left:40%;top:40%"></span>
+              <span class="wf-scatter-dot you" style="position:absolute;left:75%;top:35%"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:8px;color:#3a6a9f;margin-top:2px"><span>← CTR →</span><span>↑ CVR</span></div>
+            <div class="wf-legend"><span><span class="wf-legend-dot" style="background:#1e6fd9"></span>Your creatives</span><span><span class="wf-legend-dot" style="background:#2a5a9f;opacity:0.6"></span>Peer creatives</span></div>
+          </div>
+
+          <!-- Chart 6: Language impact -->
+          <div class="wf-chart">
+            <div class="wf-chart-title">Language Match Impact (target country lang)</div>
+            <div style="padding:4px 0">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="font-size:9px;color:#7aa8d8;width:55px">Matched</div>
+                <div style="background:#1e6fd9;height:12px;border-radius:3px;width:72%;display:flex;align-items:center;padding:0 4px"><span style="font-size:8px;color:#fff">CVR 23.1%</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="font-size:9px;color:#7aa8d8;width:55px">Unmatched</div>
+                <div style="background:#2a5a9f;height:12px;border-radius:3px;width:48%;opacity:0.7;display:flex;align-items:center;padding:0 4px"><span style="font-size:8px;color:#cde">CVR 15.4%</span></div>
+              </div>
+            </div>
+            <div style="font-size:8px;color:#4caf50;margin-top:4px">▲ +50% CVR lift when language matches country</div>
+          </div>
+
+        </div>
+
+        <!-- Creative Thumbnail Strip -->
+        <div class="wf-creative-strip">
+          <div class="wf-section-label">Top Creatives (ranked by Perf Score) — click to drill in</div>
+          <div>
+            <div class="wf-creative-thumb top" style="border-color:#1e6fd9">★1</div>
+            <div class="wf-creative-thumb top" style="border-color:#1e6fd9">★2</div>
+            <div class="wf-creative-thumb top" style="border-color:#26a69a">★3</div>
+            <div class="wf-creative-thumb">4</div>
+            <div class="wf-creative-thumb">5</div>
+            <div class="wf-creative-thumb">6</div>
+            <div class="wf-creative-thumb">7</div>
+            <div class="wf-creative-thumb">8</div>
+            <div style="display:inline-block;font-size:9px;color:#3a6a9f;vertical-align:middle;margin-left:6px">+4 more ›</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Does this match your vision?</h3>
+  <p class="subtitle">Check the browser and tell me what feels right, what's missing, or what needs to change. No need to click — just reply in the terminal.</p>
+  <div class="options">
+    <div class="option" data-choice="yes" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content"><h3>Yes, this is the direction</h3><p>Move on to the full design spec</p></div>
+    </div>
+    <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+      <div class="letter">↺</div>
+      <div class="content"><h3>Close, but needs changes</h3><p>Tell me what to adjust</p></div>
+    </div>
+  </div>
+</div>
