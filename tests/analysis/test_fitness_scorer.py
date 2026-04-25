@@ -291,3 +291,11 @@ def test_all_scorers_return_valid_series_real_data():
         assert len(scores) == 1080, f"{type(scorer).__name__} returned wrong length"
         assert scores.is_monotonic_decreasing, f"{type(scorer).__name__} not sorted"
         assert np.isfinite(scores.values).all(), f"{type(scorer).__name__} has non-finite scores"
+
+
+def test_sharpe_single_attribute_does_not_inflate():
+    scorer = SharpeCorrelationScorer(epsilon=1e-6)
+    # single-element contribution — should NOT produce score ≈ 1/epsilon (300,000)
+    cv = pd.Series({"novelty_score": 0.3})
+    score = scorer._score_one(cv)
+    assert score == pytest.approx(0.3)  # falls back to sum

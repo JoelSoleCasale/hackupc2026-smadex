@@ -222,6 +222,8 @@ class SharpeCorrelationScorer(CreativeFitnessScorer):
         self.epsilon = epsilon
 
     def _score_one(self, contributions: pd.Series) -> float:
+        if len(contributions) < 2:
+            return float(contributions.sum())
         return float(contributions.mean() / (contributions.std(ddof=0) + self.epsilon))
 
 
