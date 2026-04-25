@@ -54,7 +54,6 @@ USER_CHARACTERISTICS: dict[str, dict] = {
     "target_os": {"source": "campaign", "col": "target_os"},
     "vertical": {"source": "campaign", "col": "vertical"},
     "objective": {"source": "campaign", "col": "objective"},
-    "hq_region": {"source": "summary", "col": "hq_region"},
     "country": {"source": "daily", "col": "country"},
     "os": {"source": "daily", "col": "os"},
 }
