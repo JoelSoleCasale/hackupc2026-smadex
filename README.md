@@ -40,6 +40,30 @@ uv run python src/embeddings/generate_embeddings.py
 uv run python src/embeddings/generate_embeddings.py --resume
 ```
 
+## Pre-computing Correlation Analysis
+
+The correlation engine computes how each creative attribute (text density, novelty score, theme, emotional tone, etc.) correlates with a performance metric, broken down by audience segment (age group, country, OS, vertical, etc.). Results are saved as Parquet files and can be loaded instantly in the dashboard.
+
+Two methods are available:
+
+- `statistical` — Pearson correlation with p-value; per-level scores for categorical attributes
+- `rf_signed` — Random Forest feature importance signed by the direction of the Pearson correlation (captures non-linear relationships while preserving sign)
+
+```bash
+# Statistical correlations for perf_score (default)
+uv run python scripts/precompute_correlations.py --method statistical --metric perf_score
+
+# RF signed importances for CTR
+uv run python scripts/precompute_correlations.py --method rf_signed --metric overall_ctr
+
+# Run all 8 combinations (2 methods × 4 metrics)
+uv run python scripts/precompute_correlations.py --all
+```
+
+Output: `data/correlations/correlations_{method}_{metric}.parquet`
+
+Each file is a flat table with one row per `(segment, creative attribute level)`. Segment dimensions include `target_age_segment`, `country`, `os`, `vertical`, `objective`, `target_os`, and `hq_region`. To add a new dimension or attribute, extend the `CREATIVE_ATTRIBUTES` or `USER_CHARACTERISTICS` dicts in `src/analysis/correlation_engine.py`.
+
 ## Project Structure
 
 ```
@@ -47,10 +71,13 @@ smadex/
 ├── main.py                  # Streamlit entry point — run with: uv run streamlit run main.py
 ├── pyproject.toml           # Dependencies and tool config (uv)
 │
+├── scripts/                 # Offline pre-computation scripts
+│   └── precompute_correlations.py  # Generate correlation Parquet files
+│
 ├── src/                     # All application source code
 │   ├── data/                # Data loading and preprocessing utilities
 │   ├── embeddings/          # Embedding generation (generate_embeddings.py) and loading
-│   ├── analysis/            # Fatigue detection and creative performance analysis
+│   ├── analysis/            # correlation_engine.py — segment × attribute correlations
 │   ├── features/            # Feature engineering
 │   ├── models/              # ML classifiers and rankers
 │   └── dashboard/           # Streamlit pages and components
@@ -64,7 +91,8 @@ smadex/
 │   ├── campaign_summary.csv
 │   ├── data_dictionary.csv
 │   ├── assets/              # 1,080 synthetic creative PNGs
-│   └── embeddings/          # Generated embeddings (creative_embeddings.npz)
+│   ├── embeddings/          # Generated embeddings (creative_embeddings.npz)
+│   └── correlations/        # Pre-computed correlation Parquet files
 │
 ├── notebooks/               # Exploratory analysis notebooks (01–07)
 └── docs/                    # Project documentation and insights

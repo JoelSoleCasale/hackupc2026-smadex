@@ -24,6 +24,7 @@ dependencies = [
     "loguru>=0.7.0",
     "streamlit>=1.45.0",
     "statsmodels>=0.14.6",
+    "pyarrow>=24.0.0",
 ]
 
 [dependency-groups]
