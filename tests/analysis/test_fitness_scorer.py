@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.analysis.fitness_scorer import LinearFitnessScorer, SharpeCorrelationScorer
+from src.analysis.fitness_scorer import (
+    LinearFitnessScorer,
+    SharpeCorrelationScorer,
+    TopKFitnessScorer,
+)
 
 
 def _make_corr(char, value, attr, level, corr, p, n) -> dict:
@@ -198,3 +202,42 @@ def test_sharpe_epsilon_prevents_division_by_zero():
     score = scorer._score_one(cv)
     assert np.isfinite(score)
     assert score > 0
+
+
+def test_topk_filter_profile_keeps_k_attributes():
+    """_filter_profile should keep exactly k unique creative_attribute values."""
+    profile = pd.DataFrame(
+        {
+            "creative_attribute": ["a", "b", "c", "d"],
+            "creative_attribute_level": [None, None, None, None],
+            "weighted_correlation": [0.5, 0.1, 0.8, 0.3],
+        }
+    )
+    scorer = TopKFitnessScorer(k=2)
+    filtered = scorer._filter_profile(profile)
+    assert set(filtered["creative_attribute"]) == {"a", "c"}  # top-2 by |weighted_correlation|
+
+
+def test_topk_filter_keeps_all_levels_of_selected_attribute():
+    """When a categorical attribute is in top-K, all its levels are retained."""
+    profile = pd.DataFrame(
+        {
+            "creative_attribute": ["theme", "theme", "novelty_score"],
+            "creative_attribute_level": ["gameplay", "family", None],
+            "weighted_correlation": [0.5, 0.4, 0.1],
+        }
+    )
+    scorer = TopKFitnessScorer(k=1)
+    filtered = scorer._filter_profile(profile)
+    # theme is the top attribute (max |wc|=0.5); both levels retained
+    assert set(filtered["creative_attribute"]) == {"theme"}
+    assert len(filtered) == 2
+
+
+def test_topk_score_all_top_k_only(mini_summary, single_segment_corr):
+    """TopKFitnessScorer(k=1) scores using only the top attribute."""
+    scorer = TopKFitnessScorer(k=1)
+    scores = scorer.score_all(mini_summary, single_segment_corr, [("country", "US")])
+    assert isinstance(scores, pd.Series)
+    assert len(scores) == 3
+    assert scores.is_monotonic_decreasing
