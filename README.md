@@ -1,76 +1,93 @@
-# Smadex Creative Intelligence Challenge Dataset
+# Smadex Creative Intelligence
 
-This is a **fully synthetic** ad-tech dataset created for a hackathon-style "Creative Intelligence" challenge.
-It is intentionally **large enough to feel real**, but still **bounded enough for university teams** to understand in a few minutes.
+HackUPC 2026 — Ad creative performance & fatigue analysis dashboard.
 
-## What teams can build
-- A dashboard to explain why some creatives work better than others
-- A fatigue detector that spots when a creative is wearing out
-- A recommendation engine for the next creative variation to test
-- A lightweight scoring model for creative quality by vertical, country or OS
+Built for the [Smadex Creative Intelligence Challenge](docs/hackathon-brief.md): help mobile advertisers understand which creatives work, why, and when they fatigue.
 
-## Recommended framing
-Do **not** treat this like a perfect prediction competition.
-The most interesting projects will combine:
-1. analysis,
-2. simple modeling,
-3. explainability,
-4. a product demo.
+## Requirements
 
-## Files
-- `advertisers.csv`: advertiser-level metadata
-- `campaigns.csv`: campaign setup and targeting
-- `creatives.csv`: creative metadata plus the relative path of each synthetic PNG asset
-- `creative_daily_country_os_stats.csv`: main fact table with one row per date x creative x country x OS
-- `creative_summary.csv`: pre-aggregated creative-level metrics and a synthetic status label
-- `campaign_summary.csv`: pre-aggregated campaign-level metrics
-- `data_dictionary.csv`: column definitions
-- `assets/`: synthetic creative images referenced by `creatives.csv`
+- Python ≥ 3.12
+- [uv](https://docs.astral.sh/uv/) (package manager)
+- NVIDIA GPU with CUDA 12.6 — required only for embedding generation; the dashboard runs on CPU
 
-## Dataset size
-- Advertisers: 36
-- Campaigns: 180
-- Creatives: 1,080
-- Daily rows: 192,315
+## Setup
 
-## Join keys
-- `advertisers.advertiser_id = campaigns.advertiser_id`
-- `campaigns.campaign_id = creatives.campaign_id`
-- `creatives.creative_id = creative_daily_country_os_stats.creative_id`
-- `campaigns.campaign_id = creative_daily_country_os_stats.campaign_id`
+```bash
+# 1. Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-## Notes
-- All names, apps, assets and metrics are synthetic.
-- The data contains **realistic patterns**, including:
-  - different creative preferences by vertical,
-  - different performance by country and OS,
-  - creative fatigue over time,
-  - uneven spend allocation across creatives.
-- Some columns are engineered summaries meant to make the problem approachable in a hackathon.
-- Hidden generator variables were intentionally excluded from the public files.
+# 2. Install dependencies
+uv sync
 
-## Suggested student tasks
-**Beginner**
-- Rank creatives by performance within a campaign
-- Compare winning traits by vertical
+# 3. Install pre-commit hooks
+uv run pre-commit install
+```
 
-**Intermediate**
-- Detect fatigue using the daily table
-- Explain performance drops by feature group
+## Running the Dashboard
 
-**Advanced**
-- Recommend the next creative variation to test for a campaign
-- Build a small copilot that explains creative performance in plain English
+```bash
+uv run streamlit run main.py
+```
 
-## Known Quirks
+## Generating Embeddings (GPU required)
 
-**`fatigue_day` is only populated for fatigued creatives.**
-Rows where `creative_status` is `top_performer`, `stable`, or `underperformer` have a blank `fatigue_day`.
-Use `creative_status == "fatigued"` to filter for fatigued creatives — `fatigue_day.notna()` gives the same result but is redundant.
+The embedding generation script processes all 1,080 creative PNGs through Gemma 4 and saves the result to `data/embeddings/creative_embeddings.npz`. Run it once on a machine with an NVIDIA GPU:
 
-**Portfolio structure is perfectly uniform by design.**
-Every advertiser has exactly 5 campaigns and every campaign has exactly 6 creatives.
-Any "most active advertiser" or "biggest portfolio" analysis will return a tie across all advertisers — focus on performance metrics instead.
+```bash
+uv run python src/embeddings/generate_embeddings.py
 
-## Caveat
-This dataset is designed for learning, prototyping and demos — not for benchmarking real production models.
+# Resume an interrupted run:
+uv run python src/embeddings/generate_embeddings.py --resume
+```
+
+## Project Structure
+
+```
+smadex/
+├── main.py                  # Streamlit entry point — run with: uv run streamlit run main.py
+├── pyproject.toml           # Dependencies and tool config (uv)
+│
+├── src/                     # All application source code
+│   ├── data/                # Data loading and preprocessing utilities
+│   ├── embeddings/          # Embedding generation (generate_embeddings.py) and loading
+│   ├── analysis/            # Fatigue detection and creative performance analysis
+│   ├── features/            # Feature engineering
+│   ├── models/              # ML classifiers and rankers
+│   └── dashboard/           # Streamlit pages and components
+│
+├── data/                    # Dataset (not committed — provided by Smadex)
+│   ├── advertisers.csv
+│   ├── campaigns.csv
+│   ├── creatives.csv
+│   ├── creative_summary.csv
+│   ├── creative_daily_country_os_stats.csv
+│   ├── campaign_summary.csv
+│   ├── data_dictionary.csv
+│   ├── assets/              # 1,080 synthetic creative PNGs
+│   └── embeddings/          # Generated embeddings (creative_embeddings.npz)
+│
+├── notebooks/               # Exploratory analysis notebooks (01–07)
+└── docs/                    # Project documentation and insights
+```
+
+## Key Data Files
+
+| File | Description |
+|------|-------------|
+| `data/creative_summary.csv` | One row per creative — aggregated KPIs + `creative_status` label |
+| `data/creative_daily_country_os_stats.csv` | Granular daily data — use for fatigue detection |
+| `data/creatives.csv` | Creative metadata + `asset_file` path to PNG |
+| `data/data_dictionary.csv` | Column definitions for all files |
+
+Join keys: `advertiser_id → campaign_id → creative_id`
+
+## Dataset Overview
+
+| Entity | Count |
+|--------|-------|
+| Advertisers | 36 |
+| Campaigns | 180 (5 per advertiser) |
+| Creatives | 1,080 (6 per campaign) |
+| Daily rows | 192,315 |
+
+All data is synthetic. See [docs/insights.md](docs/insights.md) for EDA findings and [docs/hackathon-brief.md](docs/hackathon-brief.md) for the challenge brief.

@@ -8,3 +8,16 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Log files
+*.log
+
+# Generated embeddings and model artifacts
+data/embeddings/
+
+# Jupyter outputs (stripped by nbstripout pre-commit hook)
+.ipynb_checkpoints/
+
+# HTML reports (generated from notebooks)
+notebooks/*.html
+eda/*.html

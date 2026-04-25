@@ -10,7 +10,7 @@ Consolidated findings from all 6 EDA notebooks. Structured as actionable knowled
 - **Perfect portfolio uniformity**: every advertiser has exactly 5 campaigns, every campaign has exactly 6 creatives. Any "who's most active" analysis will always tie — focus on performance metrics instead.
 - **`fatigue_day` is intentionally sparse**: it is only populated for `creative_status == "fatigued"` rows. Do not treat `null` values as missing data; they simply mean the creative did not fatigue.
 - **192,315 daily rows** span a multi-month period across multiple countries and 2 OS values (Android, iOS). The daily table is the richest source of signal for time-series analysis.
-- **1,080 PNG assets** are flat in `assets/`, named `creative_XXXXXX.png`, directly joinable by `creative_id`.
+- **1,080 PNG assets** are flat in `data/assets/`, named `creative_XXXXXX.png`, directly joinable by `creative_id`.
 
 ### Join Path
 ```

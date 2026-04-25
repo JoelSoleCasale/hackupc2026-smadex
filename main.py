@@ -1,6 +1,3 @@
-def main():
-    print("Hello from smadex!")
+from src.dashboard import render
 
-
-if __name__ == "__main__":
-    main()
+render()

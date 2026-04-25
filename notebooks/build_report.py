@@ -6,6 +6,7 @@ that shows only text and plot outputs (no source code).
 Run from the smadex/ directory:
     uv run python eda/build_report.py
 """
+
 import sys
 from pathlib import Path
 

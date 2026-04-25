@@ -1,7 +1,7 @@
 [project]
 name = "smadex"
 version = "0.1.0"
-description = "Add your description here"
+description = "Creative intelligence dashboard for mobile advertisers — HackUPC 2026"
 requires-python = ">=3.12"
 dependencies = [
     "ipykernel>=7.2.0",
@@ -12,4 +12,41 @@ dependencies = [
     "pillow>=12.2.0",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
+    "torch>=2.5.0",
+    "torchvision>=0.20.0",
+    "transformers>=4.47.0",
+    "accelerate>=1.2.0",
+    "bitsandbytes>=0.45.0",
+    "plotly>=5.24.0",
+    "umap-learn>=0.5.7",
+    "scipy>=1.14.0",
+    "tqdm>=4.66.0",
+    "loguru>=0.7.0",
+    "streamlit>=1.45.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+    "ruff>=0.9.4",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu126" }]
+torchvision = [{ index = "pytorch-cu126" }]
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501", "N806", "N816"]
+
+[tool.ruff.format]
+line-ending = "lf"
