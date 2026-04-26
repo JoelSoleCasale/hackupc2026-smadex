@@ -101,6 +101,20 @@ def _format_val(col_key: str, val: object) -> str:
     return str(val)
 
 
+def _metric_box(label: str, value: str, *, purple: bool = False) -> str:
+    if purple:
+        bg, border, label_color, val_color = "#f5e9f9", "#d4a8e6", _PURPLE, _PURPLE
+    else:
+        bg, border, label_color, val_color = "#f3f4f6", "#d1d5db", "#6b7280", "#374151"
+    return (
+        f'<div style="background:{bg};border:1px solid {border};border-radius:10px;'
+        f'padding:10px 14px;text-align:center;margin-bottom:4px">'
+        f'<div style="font-size:11px;color:{label_color};font-weight:600;margin-bottom:3px">{label}</div>'
+        f'<div style="font-size:20px;font-weight:700;color:{val_color}">{value}</div>'
+        f"</div>"
+    )
+
+
 def _section_header(title: str) -> None:
     st.markdown(
         f'<div style="border-left:4px solid {_PURPLE};padding-left:10px;margin:12px 0 6px">'
@@ -464,58 +478,54 @@ def _render_alternative_card(
             unsafe_allow_html=True,
         )
 
-        img_col, attr_col = st.columns([1, 2])
-
-        with img_col:
-            asset_file = alt_row.get("asset_file", "")
-            img_path = _asset_path(asset_file) if asset_file else Path("/nonexistent")
-            if img_path.exists():
-                st.image(str(img_path), use_container_width=True)
-            else:
-                st.markdown(
-                    f'<div style="height:200px;background:{_PURPLE_LIGHT};display:flex;'
-                    f"align-items:center;justify-content:center;border-radius:8px;"
-                    f'color:{_PURPLE};font-size:13px">No image available</div>',
-                    unsafe_allow_html=True,
-                )
-
-            # Key metrics pill row
-            perf = alt_row.get("perf_score")
-            roas = alt_row.get("overall_roas")
-            if pd.notna(perf) or pd.notna(roas):
-                pills = []
-                if pd.notna(perf):
-                    pills.append(
-                        f'<span style="background:{_PURPLE_LIGHT};color:{_PURPLE};'
-                        f'border-radius:10px;padding:2px 9px;font-size:12px;font-weight:600">'
-                        f"Perf {float(perf):.2f}</span>"
-                    )
-                if pd.notna(roas):
-                    pills.append(
-                        f'<span style="background:#f0fdf4;color:#16a34a;'
-                        f'border-radius:10px;padding:2px 9px;font-size:12px;font-weight:600">'
-                        f"ROAS {float(roas):.2f}×</span>"
-                    )
-                st.markdown(
-                    '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">'
-                    + "".join(pills)
-                    + "</div>",
-                    unsafe_allow_html=True,
-                )
-
-        with attr_col:
+        asset_file = alt_row.get("asset_file", "")
+        img_path = _asset_path(asset_file) if asset_file else Path("/nonexistent")
+        if img_path.exists():
+            st.image(str(img_path), use_container_width=True)
+        else:
             st.markdown(
-                f'<p style="font-weight:600;color:{_PURPLE};margin-bottom:6px">Creative Attributes</p>',
+                f'<div style="height:160px;background:{_PURPLE_LIGHT};display:flex;'
+                f"align-items:center;justify-content:center;border-radius:8px;"
+                f'color:{_PURPLE};font-size:13px">No image available</div>',
                 unsafe_allow_html=True,
             )
-            for col_key, label in _ATTRIBUTE_FIELDS:
-                val = alt_row.get(col_key)
-                if val is None or pd.isna(val):
-                    continue
-                display_val = _format_val(col_key, val)
-                tags = _explainability_tags(corr_df, col_key, val)
-                tag_html = ("&nbsp;&nbsp;" + _render_tags_html(tags)) if tags else ""
-                st.markdown(f"**{label}:** {display_val}{tag_html}", unsafe_allow_html=True)
+
+        # Key metrics pill row
+        perf = alt_row.get("perf_score")
+        roas = alt_row.get("overall_roas")
+        if pd.notna(perf) or pd.notna(roas):
+            pills = []
+            if pd.notna(perf):
+                pills.append(
+                    f'<span style="background:{_PURPLE_LIGHT};color:{_PURPLE};'
+                    f'border-radius:10px;padding:2px 9px;font-size:12px;font-weight:600">'
+                    f"Perf {float(perf):.2f}</span>"
+                )
+            if pd.notna(roas):
+                pills.append(
+                    f'<span style="background:#f0fdf4;color:#16a34a;'
+                    f'border-radius:10px;padding:2px 9px;font-size:12px;font-weight:600">'
+                    f"ROAS {float(roas):.2f}×</span>"
+                )
+            st.markdown(
+                '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;margin-bottom:10px">'
+                + "".join(pills)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            f'<p style="font-weight:600;color:{_PURPLE};margin-bottom:6px">Creative Attributes</p>',
+            unsafe_allow_html=True,
+        )
+        for col_key, label in _ATTRIBUTE_FIELDS:
+            val = alt_row.get(col_key)
+            if val is None or pd.isna(val):
+                continue
+            display_val = _format_val(col_key, val)
+            tags = _explainability_tags(corr_df, col_key, val)
+            tag_html = ("&nbsp;&nbsp;" + _render_tags_html(tags)) if tags else ""
+            st.markdown(f"**{label}:** {display_val}{tag_html}", unsafe_allow_html=True)
 
 
 def _render_alternatives(
@@ -567,10 +577,10 @@ def _render_alternatives(
         st.info("No alternatives could be computed for the current target audience.")
         return
 
-    for i, (scorer_name, scorer_desc, alt_row) in enumerate(alternatives, 1):
-        _render_alternative_card(alt_row, scorer_name, scorer_desc, corr_df, i)
-        if i < len(alternatives):
-            st.write("")
+    cols = st.columns(len(alternatives))
+    for i, ((scorer_name, scorer_desc, alt_row), col) in enumerate(zip(alternatives, cols), 1):
+        with col:
+            _render_alternative_card(alt_row, scorer_name, scorer_desc, corr_df, i)
 
 
 # ---------------------------------------------------------------------------
@@ -667,20 +677,34 @@ def render_ad_detail_view(
         _status_badge(status)
 
     with right:
-        _section_header("Metrics")
+        _section_header("General Info")
+        perf = row.get("perf_score")
+        ctr = row.get("overall_ctr")
+        cvr = row.get("overall_cvr")
+        roas = row.get("overall_roas")
         m1, m2, m3, m4 = st.columns(4)
         with m1:
-            perf = row.get("perf_score")
-            st.metric("Perf Score", f"{float(perf):.3f}" if pd.notna(perf) else "N/A")
+            st.markdown(
+                _metric_box(
+                    "Perf Score", f"{float(perf):.3f}" if pd.notna(perf) else "N/A", purple=True
+                ),
+                unsafe_allow_html=True,
+            )
         with m2:
-            ctr = row.get("overall_ctr")
-            st.metric("CTR", f"{float(ctr) * 100:.2f}%" if pd.notna(ctr) else "N/A")
+            st.markdown(
+                _metric_box("CTR", f"{float(ctr) * 100:.2f}%" if pd.notna(ctr) else "N/A"),
+                unsafe_allow_html=True,
+            )
         with m3:
-            cvr = row.get("overall_cvr")
-            st.metric("CVR", f"{float(cvr) * 100:.2f}%" if pd.notna(cvr) else "N/A")
+            st.markdown(
+                _metric_box("CVR", f"{float(cvr) * 100:.2f}%" if pd.notna(cvr) else "N/A"),
+                unsafe_allow_html=True,
+            )
         with m4:
-            roas = row.get("overall_roas")
-            st.metric("ROAS", f"{float(roas):.2f}×" if pd.notna(roas) else "N/A")
+            st.markdown(
+                _metric_box("ROAS", f"{float(roas):.2f}×" if pd.notna(roas) else "N/A"),
+                unsafe_allow_html=True,
+            )
 
         # Predictions — only after 7 days
         if days_running >= 7:

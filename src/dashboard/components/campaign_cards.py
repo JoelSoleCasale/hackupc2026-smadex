@@ -7,24 +7,21 @@ import streamlit as st
 from loguru import logger
 
 _PURPLE = "#881CA6"
+_PURPLE_LIGHT = "#f5e9f9"
 
 
-def _perf_badge(score: float) -> str:
-    if score >= 0.6:
-        return (
-            '<span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;'
-            f'border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">🟢 {score:.3f}</span>'
-        )
-    elif score >= 0.4:
-        return (
-            '<span style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;'
-            f'border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">🟡 {score:.3f}</span>'
-        )
+def _metric_box(label: str, value: str, *, purple: bool = False) -> str:
+    if purple:
+        bg, border, label_color, val_color = _PURPLE_LIGHT, "#d4a8e6", _PURPLE, _PURPLE
     else:
-        return (
-            '<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;'
-            f'border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">🔴 {score:.3f}</span>'
-        )
+        bg, border, label_color, val_color = "#f3f4f6", "#d1d5db", "#6b7280", "#374151"
+    return (
+        f'<div style="background:{bg};border:1px solid {border};border-radius:10px;'
+        f'padding:8px 12px;text-align:center;margin-bottom:6px">'
+        f'<div style="font-size:10px;color:{label_color};font-weight:600;margin-bottom:2px">{label}</div>'
+        f'<div style="font-size:17px;font-weight:700;color:{val_color}">{value}</div>'
+        f"</div>"
+    )
 
 
 def render_campaign_cards(adv_summary: pd.DataFrame, adv_campaigns: pd.DataFrame) -> None:
@@ -60,11 +57,13 @@ def render_campaign_cards(adv_summary: pd.DataFrame, adv_campaigns: pd.DataFrame
                     f"</div>",
                     unsafe_allow_html=True,
                 )
-                st.markdown(_perf_badge(avg_perf), unsafe_allow_html=True)
-                st.write("")
-                st.caption(f"**Objective:** {objective}")
-                st.caption(f"**KPI:** {kpi_goal}")
-                st.caption(f"**Creatives:** {n_creatives}")
+                st.markdown(
+                    _metric_box("Avg Perf Score", f"{avg_perf:.3f}", purple=True),
+                    unsafe_allow_html=True,
+                )
+                st.markdown(_metric_box("Objective", str(objective)), unsafe_allow_html=True)
+                st.markdown(_metric_box("KPI Goal", str(kpi_goal)), unsafe_allow_html=True)
+                st.markdown(_metric_box("Creatives", str(n_creatives)), unsafe_allow_html=True)
                 if st.button(
                     "View Campaign →", key=f"camp_btn_{camp_id}", use_container_width=True
                 ):

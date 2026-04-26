@@ -10,6 +10,23 @@ from loguru import logger
 from src.dashboard.components.creative_grid import render_creative_grid
 from src.dashboard.components.kpi_cards import render_kpi_cards
 
+_PURPLE = "#881CA6"
+_PURPLE_LIGHT = "#f5e9f9"
+
+
+def _metric_box(label: str, value: str, *, purple: bool = False) -> str:
+    if purple:
+        bg, border, label_color, val_color = _PURPLE_LIGHT, "#d4a8e6", _PURPLE, _PURPLE
+    else:
+        bg, border, label_color, val_color = "#f3f4f6", "#d1d5db", "#6b7280", "#374151"
+    return (
+        f'<div style="background:{bg};border:1px solid {border};border-radius:10px;'
+        f'padding:8px 12px;text-align:center;margin-bottom:6px">'
+        f'<div style="font-size:10px;color:{label_color};font-weight:600;margin-bottom:2px">{label}</div>'
+        f'<div style="font-size:17px;font-weight:700;color:{val_color}">{value}</div>'
+        f"</div>"
+    )
+
 
 def _render_roas_evolution(camp_daily: pd.DataFrame, camp_summary: pd.DataFrame) -> go.Figure:
     """Multi-line ROAS over time, one line per creative."""
@@ -182,26 +199,52 @@ def render_campaign_view(
 
     if not camp_meta_rows.empty:
         meta = camp_meta_rows.iloc[0]
-        st.subheader("Campaign Details")
-        left, right = st.columns(2)
+        st.markdown(
+            '<div style="border-left:4px solid #881CA6;padding-left:10px;margin:16px 0 10px">'
+            '<span style="font-size:17px;font-weight:700">Campaign Details</span></div>',
+            unsafe_allow_html=True,
+        )
 
-        with left:
-            st.markdown(f"**Objective:** {meta.get('objective', '—')}")
-            st.markdown(f"**KPI Goal:** {meta.get('kpi_goal', '—')}")
-            st.markdown(f"**Primary Theme:** {meta.get('primary_theme', '—')}")
-            budget = meta.get("daily_budget_usd", None)
-            budget_str = f"${float(budget):,.0f}/day" if pd.notna(budget) else "—"
-            st.markdown(f"**Daily Budget:** {budget_str}")
+        avg_perf = float(camp_summary["perf_score"].mean()) if not camp_summary.empty else 0.0
+        budget = meta.get("daily_budget_usd", None)
+        budget_str = f"${float(budget):,.0f}/day" if pd.notna(budget) else "—"
+        countries_raw = meta.get("countries", "")
+        countries_str = (
+            str(countries_raw).replace(";", ",").replace("|", ",")
+            if pd.notna(countries_raw) and countries_raw
+            else "—"
+        )
+        start = meta.get("start_date", "—")
+        end = meta.get("end_date", "—")
 
-        with right:
-            st.markdown(f"**Target Age:** {meta.get('target_age_segment', '—')}")
-            st.markdown(f"**Target OS:** {meta.get('target_os', '—')}")
-            countries_raw = meta.get("countries", "")
-            if pd.notna(countries_raw) and countries_raw:
-                countries_list = str(countries_raw).replace(";", ",").replace("|", ",")
-                st.markdown(f"**Countries:** {countries_list}")
-            else:
-                st.markdown("**Countries:** —")
-            start = meta.get("start_date", "—")
-            end = meta.get("end_date", "—")
-            st.markdown(f"**Period:** {start} → {end}")
+        c0, c1, c2, c3, c4 = st.columns(5)
+        with c0:
+            st.markdown(
+                _metric_box("Avg Perf Score", f"{avg_perf:.3f}", purple=True),
+                unsafe_allow_html=True,
+            )
+        with c1:
+            st.markdown(
+                _metric_box("Objective", str(meta.get("objective", "—"))), unsafe_allow_html=True
+            )
+        with c2:
+            st.markdown(
+                _metric_box("KPI Goal", str(meta.get("kpi_goal", "—"))), unsafe_allow_html=True
+            )
+        with c3:
+            st.markdown(_metric_box("Daily Budget", budget_str), unsafe_allow_html=True)
+        with c4:
+            st.markdown(_metric_box("Period", f"{start} → {end}"), unsafe_allow_html=True)
+
+        c5, c6, c7 = st.columns(3)
+        with c5:
+            st.markdown(
+                _metric_box("Target Age", str(meta.get("target_age_segment", "—"))),
+                unsafe_allow_html=True,
+            )
+        with c6:
+            st.markdown(
+                _metric_box("Target OS", str(meta.get("target_os", "—"))), unsafe_allow_html=True
+            )
+        with c7:
+            st.markdown(_metric_box("Countries", countries_str), unsafe_allow_html=True)
