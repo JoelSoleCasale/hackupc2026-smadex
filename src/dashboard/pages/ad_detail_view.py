@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 from loguru import logger
 
@@ -66,6 +67,46 @@ _SCORERS = [
     ),
 ]
 
+_BOOL_FIELDS = {"has_gameplay", "has_ugc_style", "has_price", "has_discount_badge"}
+
+_CHAR_DISPLAY = {
+    "target_age_segment": "ages",
+    "target_os": "os",
+}
+
+_AGE_ORDER = ["18-24", "25-34", "35-44", "45-54"]
+
+
+def _merge_age_ranges(ages: list[str]) -> str:
+    """Collapse consecutive age brackets into a single range, e.g. ['18-24','25-34'] → '18-54'."""
+    present = [a for a in _AGE_ORDER if a in ages]
+    if not present:
+        return ", ".join(ages)
+    indices = [_AGE_ORDER.index(a) for a in present]
+    if indices == list(range(min(indices), max(indices) + 1)):
+        return f"{present[0].split('-')[0]}-{present[-1].split('-')[1]}"
+    return ", ".join(present)
+
+
+def _format_val(col_key: str, val: object) -> str:
+    """Human-friendly value string for a creative attribute."""
+    if col_key in _BOOL_FIELDS:
+        return "Yes" if float(val) == 1 else "No"
+    return str(val)
+
+
+def _render_tags_html(tags: list[tuple[str, str]]) -> str:
+    """Return an HTML string of compact +/− signal chips."""
+    parts = []
+    for sign, text in tags:
+        color = "#2ca02c" if sign == "pos" else "#d62728"
+        indicator = "+" if sign == "pos" else "−"
+        parts.append(
+            f'<span style="color:{color};font-weight:700;font-size:12px">{indicator}</span>'
+            f'<span style="color:#aaa;font-size:11px"> {text}</span>'
+        )
+    return "&nbsp;&nbsp;".join(parts)
+
 
 def _asset_path(asset_file: str) -> Path:
     return _PROJECT_ROOT / "data" / asset_file
@@ -100,6 +141,11 @@ def _explainability_tags(
     if significant.empty:
         return []
 
+    # For binary attributes, flip the correlation sign when the creative lacks the feature.
+    # corr(has_X, perf) > 0 means *having* X helps; absence means the opposite signal.
+    if not is_categorical and float(value) == 0:
+        significant["correlation"] = -significant["correlation"]
+
     significant = significant.sort_values("correlation", key=lambda s: s.abs(), ascending=False)
 
     # Group by (characteristic, sign) and join values with comma
@@ -111,8 +157,9 @@ def _explainability_tags(
 
     tags = []
     for (char, sign), values in groups.items():
-        emoji = "🟢" if sign == "pos" else "🔴"
-        tags.append((emoji, f"{char}: {', '.join(values)}"))
+        display_char = _CHAR_DISPLAY.get(char, char)
+        joined = _merge_age_ranges(values) if char == "target_age_segment" else ", ".join(values)
+        tags.append((sign, f"{display_char}: {joined}"))
     return tags
 
 
@@ -122,10 +169,7 @@ def _render_attributes_with_tags(
 ) -> None:
     """Render the attributes grid with inline audience-signal tags."""
     st.subheader("Attributes & Audience Signals")
-    st.caption(
-        "🟢 = audience segment that correlates positively with this attribute  "
-        "🔴 = audience segment that correlates negatively"
-    )
+    st.caption("+ audience segment correlates positively · − correlates negatively")
 
     fields_left = _ATTRIBUTE_FIELDS[: len(_ATTRIBUTE_FIELDS) // 2 + 1]
     fields_right = _ATTRIBUTE_FIELDS[len(_ATTRIBUTE_FIELDS) // 2 + 1 :]
@@ -138,9 +182,10 @@ def _render_attributes_with_tags(
                 val = creative_row.get(col_key, None)
                 if val is None or pd.isna(val):
                     continue
+                display_val = _format_val(col_key, val)
                 tags = _explainability_tags(corr_df, col_key, val)
-                tag_str = "  " + "  ".join(f"{e} {t}" for e, t in tags) if tags else ""
-                st.markdown(f"**{label}:** {val}{tag_str}")
+                tag_html = ("&nbsp;&nbsp;" + _render_tags_html(tags)) if tags else ""
+                st.markdown(f"**{label}:** {display_val}{tag_html}", unsafe_allow_html=True)
 
 
 def _derive_target_segments(
@@ -226,9 +271,10 @@ def _render_alternative_card(
             val = alt_row.get(col_key)
             if val is None or pd.isna(val):
                 continue
+            display_val = _format_val(col_key, val)
             tags = _explainability_tags(corr_df, col_key, val)
-            tag_str = "  " + "  ".join(f"{e} {t}" for e, t in tags) if tags else ""
-            st.markdown(f"**{label}:** {val}{tag_str}")
+            tag_html = ("&nbsp;&nbsp;" + _render_tags_html(tags)) if tags else ""
+            st.markdown(f"**{label}:** {display_val}{tag_html}", unsafe_allow_html=True)
 
 
 def _campaign_params_for(campaigns_df: pd.DataFrame, campaign_id: str, advertiser: str) -> dict:
@@ -325,12 +371,122 @@ def _render_alternatives(
         _render_alternative_card(alt_row, scorer_name, scorer_desc, corr_df, img_col, attr_col)
 
 
+_OS_COLORS = ["#1e6fd9", "#e07b39", "#2ca02c", "#d62728", "#9467bd"]
+
+
+def _render_creative_roas_evolution(daily_df: pd.DataFrame, creative_id: str) -> go.Figure:
+    """Single-line ROAS over time for one creative."""
+    cdata = daily_df[daily_df["creative_id"] == creative_id].copy()
+    fig = go.Figure()
+    if cdata.empty:
+        fig.add_annotation(
+            text="No daily data",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font={"size": 14, "color": "grey"},
+        )
+        fig.update_layout(xaxis_visible=False, yaxis_visible=False, height=380)
+        return fig
+
+    cdata["date"] = pd.to_datetime(cdata["date"])
+    agg = (
+        cdata.groupby("date")
+        .agg(revenue=("revenue_usd", "sum"), spend=("spend_usd", "sum"))
+        .reset_index()
+    )
+    agg["roas"] = agg["revenue"] / agg["spend"].replace(0, float("nan"))
+    agg = agg.sort_values("date")
+
+    fig.add_trace(
+        go.Scatter(
+            x=agg["date"],
+            y=agg["roas"],
+            mode="lines+markers",
+            line={"color": "#1e6fd9", "width": 2},
+            marker={"size": 4},
+            fill="tozeroy",
+            fillcolor="rgba(30,111,217,0.08)",
+            hovertemplate="%{x|%b %d}<br>ROAS: %{y:.2f}×<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title="ROAS Evolution",
+        xaxis_title="Date",
+        yaxis_title="ROAS",
+        height=380,
+    )
+    return fig
+
+
+def _render_os_breakdown(daily_df: pd.DataFrame, creative_id: str) -> go.Figure:
+    """Grouped bar: CTR and CVR on x-axis, one bar series per OS with value labels."""
+    cdata = daily_df[daily_df["creative_id"] == creative_id].copy()
+    fig = go.Figure()
+    if cdata.empty:
+        fig.add_annotation(
+            text="No daily data",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font={"size": 14, "color": "grey"},
+        )
+        fig.update_layout(xaxis_visible=False, yaxis_visible=False, height=380)
+        return fig
+
+    agg = (
+        cdata.groupby("os")
+        .agg(
+            impressions=("impressions", "sum"),
+            clicks=("clicks", "sum"),
+            conversions=("conversions", "sum"),
+        )
+        .reset_index()
+    )
+    agg["ctr"] = agg["clicks"] / agg["impressions"].replace(0, float("nan")) * 100
+    agg["cvr"] = agg["conversions"] / agg["clicks"].replace(0, float("nan")) * 100
+
+    metrics = ["CTR (%)", "CVR (%)"]
+    metric_keys = ["ctr", "cvr"]
+
+    for i, os_name in enumerate(sorted(agg["os"].unique())):
+        os_row = agg[agg["os"] == os_name].iloc[0]
+        values = [os_row[k] for k in metric_keys]
+        fig.add_trace(
+            go.Bar(
+                x=metrics,
+                y=values,
+                name=os_name,
+                marker_color=_OS_COLORS[i % len(_OS_COLORS)],
+                text=[f"{v:.2f}%" for v in values],
+                textposition="outside",
+                hovertemplate=f"{os_name}<br>%{{x}}: %{{y:.2f}}%<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        title="Performance by OS",
+        xaxis_title="Metric",
+        yaxis_title="Rate (%)",
+        barmode="group",
+        height=380,
+        yaxis={"range": [0, agg[metric_keys].max().max() * 1.25]},
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+    )
+    return fig
+
+
 def render_ad_detail_view(
     summary_df: pd.DataFrame,
     advertiser: str,
     campaign_id: str,
     creative_id: str,
     campaigns_df: pd.DataFrame,
+    daily_df: pd.DataFrame | None = None,
 ) -> None:
     """Render the ad detail page.
 
@@ -346,6 +502,8 @@ def render_ad_detail_view(
         Selected creative ID (e.g. "Creative 1.3").
     campaigns_df:
         campaigns.csv data (ID-mapped), used to derive target audience segments.
+    daily_df:
+        Full daily stats (all advertisers, ID-mapped), used for time-series plots.
     """
     # Back navigation
     if st.button("← Back to Campaign"):
@@ -415,6 +573,16 @@ def render_ad_detail_view(
         st.divider()
 
         _render_attributes_with_tags(row, corr_df)
+
+    if daily_df is not None and not daily_df.empty:
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(
+                _render_creative_roas_evolution(daily_df, creative_id), use_container_width=True
+            )
+        with col2:
+            st.plotly_chart(_render_os_breakdown(daily_df, creative_id), use_container_width=True)
 
     st.divider()
     _render_alternatives(
