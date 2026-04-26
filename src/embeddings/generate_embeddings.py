@@ -35,7 +35,6 @@ OUT_DIR = ROOT / "data" / "embeddings"
 CHECKPOINT_PATH = OUT_DIR / "checkpoint.npz"
 OUTPUT_PATH = OUT_DIR / "creative_embeddings.npz"
 
-# MODEL_ID = "google/gemma-4-E4B-it"
 MODEL_ID = "google/gemma-4-E2B-it"
 CHECKPOINT_EVERY = 100
 

@@ -4,6 +4,25 @@ HackUPC 2026 — Ad creative performance & fatigue analysis dashboard.
 
 Built for the [Smadex Creative Intelligence Challenge](docs/hackathon-brief.md): help mobile advertisers understand which creatives work, why, and when they fatigue.
 
+## Features
+
+- **Portfolio overview** — KPI cards (perf score, CTR, CVR, ROAS), peer rank bar chart, geo-OS heatmap
+- **Action Center** — automated "Pause Now" and "Scale Up" recommendations driven by fatigue status and percentile rank
+- **Campaign drill-down** — ROAS evolution and impression share trends per creative
+- **Creative detail** — audience signal correlation tags, fatigue/profitability predictions with uncertainty estimates
+- **Alternative recommendations** — three fitness-scored alternatives (Linear ⚖️, Sharpe 📐, Top-K 🏆) for each creative
+
+## Dashboard
+
+![Advertiser Overview](docs/screenshots/advertiser_view.png)
+*Advertiser overview: KPI cards, peer ranking bar chart, geographic heatmap, and the Action Center.*
+
+![Campaign View](docs/screenshots/campaign_view.png)
+*Campaign drill-down: ROAS evolution, impression share trends, and creative thumbnail grid.*
+
+![Creative Detail](docs/screenshots/creative_detail_view.png)
+*Creative detail: fatigue prediction, audience signal correlations, and alternative recommendations.*
+
 ## Requirements
 
 - Python ≥ 3.12
@@ -205,4 +224,4 @@ Recommendation flow:
 	- positive contribution attributes are good candidates to include or emphasize
 	- negative contribution attributes are candidates to reduce or avoid for that audience
 
-In practice, this supports "next creative" recommendations by turning historical performance into an audience-conditioned attribute profile, then ranking which creative patterns should be replicated. The ranking/scoring implementation is complete in `src/analysis/fitness_scorer.py`; wiring this into the dashboard alternatives UI is the next integration step.
+In practice, this supports "next creative" recommendations by turning historical performance into an audience-conditioned attribute profile, then ranking which creative patterns should be replicated. In the dashboard, the Creative Detail view surfaces three alternative creatives — one per scorer strategy — each with attribute pills showing which signals drove the recommendation.
