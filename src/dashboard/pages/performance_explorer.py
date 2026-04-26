@@ -144,7 +144,9 @@ def render_performance_explorer() -> None:
         if not creative_id:
             st.session_state.current_view = "campaign"
             st.rerun()
-        render_ad_detail_view(summary_df, advertiser, campaign_id, creative_id, campaigns_df)
+        render_ad_detail_view(
+            summary_df, advertiser, campaign_id, creative_id, campaigns_df, daily_df
+        )
 
 
 def _render_overview(

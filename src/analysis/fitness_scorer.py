@@ -176,7 +176,13 @@ class CreativeFitnessScorer(ABC):
                 continue
 
             if pd.isna(level):  # numeric or binary
-                contributions[attr] = float(creative[attr]) * wc
+                val = float(creative[attr])
+                # Binary has_* features: centre so absence is penalised (0→-wc, 1→+wc).
+                # Numeric features keep the raw value × wc formula.
+                if attr.startswith("has_"):
+                    contributions[attr] = (2.0 * val - 1.0) * wc
+                else:
+                    contributions[attr] = val * wc
             else:  # categorical — only include when the creative matches the level
                 if str(creative[attr]) == str(level):
                     contributions[f"{attr}__{level}"] = 1.0 * wc

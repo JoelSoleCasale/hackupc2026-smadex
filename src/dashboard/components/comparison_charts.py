@@ -302,7 +302,7 @@ def render_geo_heatmap(
         color_continuous_scale="Blues",
         title=f"{metric} by country",
     )
-    fig.update_layout(height=350)
+    fig.update_layout(height=500)
     return fig
 
 
