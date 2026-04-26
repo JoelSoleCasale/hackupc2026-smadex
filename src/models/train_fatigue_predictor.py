@@ -30,10 +30,10 @@ from src.features.roas_event import compute_roas_event
 _MODEL_DIR = Path(__file__).parent.parent.parent / "data" / "models"
 
 
-def _print_section(title: str) -> None:
-    print(f"\n{'-' * 50}")
-    print(f"  {title}")
-    print(f"{'-' * 50}")
+def _log_section(title: str) -> None:
+    logger.info("-" * 50)
+    logger.info("  {}", title)
+    logger.info("-" * 50)
 
 
 def _train_and_eval(
@@ -42,11 +42,11 @@ def _train_and_eval(
     cat_cols: list[str],
     label: str,
 ) -> tuple[lgb.LGBMRegressor, float]:
-    """Train a LGBMRegressor, print evaluation metrics, return (model, mae)."""
+    """Train a LGBMRegressor, log evaluation metrics, return (model, mae)."""
     X_train, X_test, y_train, y_test = train_test_split(
         features_df, y, test_size=0.2, random_state=42
     )
-    print(f"  Train: {len(X_train)} | Test: {len(X_test)}")
+    logger.info("  Train: {} | Test: {}", len(X_train), len(X_test))
 
     model = lgb.LGBMRegressor(
         n_estimators=300,
@@ -65,22 +65,22 @@ def _train_and_eval(
         eval_set=[(X_test, y_test)],
         callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(period=-1)],
     )
-    print(f"  Best iteration: {model.best_iteration_}")
+    logger.info("  Best iteration: {}", model.best_iteration_)
 
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = math.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
-    print(f"  MAE  : {mae:.2f} days")
-    print(f"  RMSE : {rmse:.2f} days")
-    print(f"  R2   : {r2:.4f}")
+    logger.info("  MAE  : {:.2f} days", mae)
+    logger.info("  RMSE : {:.2f} days", rmse)
+    logger.info("  R2   : {:.4f}", r2)
 
     importances = pd.Series(
         model.feature_importances_, index=features_df.columns, name="importance"
     ).sort_values(ascending=False)
-    print(f"  Top-10 features ({label}):")
+    logger.info("  Top-10 features ({}):", label)
     for feat, imp in importances.head(10).items():
-        print(f"    {feat:<35} {imp:.0f}")
+        logger.info("    {:<35} {:.0f}", feat, imp)
 
     return model, mae
 
@@ -104,15 +104,15 @@ def _save(
             f,
             indent=2,
         )
-    print(f"  Saved: {model_path}")
-    print(f"  Meta : {meta_path}")
+    logger.info("  Saved: {}", model_path)
+    logger.info("  Meta : {}", meta_path)
 
 
 def main() -> None:
     # ------------------------------------------------------------------
     # 1. Load data
     # ------------------------------------------------------------------
-    _print_section("Loading data")
+    _log_section("Loading data")
     daily_df = load_daily_stats()
     summary_df = load_creative_summary()
     logger.info("daily_df: {} rows | summary_df: {} rows", len(daily_df), len(summary_df))
@@ -120,9 +120,11 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 2. Build shared feature matrix (first 7 days + static attributes)
     # ------------------------------------------------------------------
-    _print_section("Engineering features (days 1-7)")
+    _log_section("Engineering features (days 1-7)")
     features = build_features(daily_df, summary_df)
-    print(f"  Feature matrix: {features.shape[0]} creatives x {features.shape[1]} features")
+    logger.info(
+        "  Feature matrix: {} creatives x {} features", features.shape[0], features.shape[1]
+    )
 
     feature_cols = list(features.columns)
     cat_cols = [c for c in CATEGORICAL_FEATURES if c in features.columns]
@@ -136,17 +138,17 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 3. Model 1: Profitability End (ROAS <= 1 for 3 consecutive days)
     # ------------------------------------------------------------------
-    _print_section("Model 1: Profitability End (ROAS <= 1 streak of 3)")
+    _log_section("Model 1: Profitability End (ROAS <= 1 streak of 3)")
     events = compute_roas_event(daily_df, streak=3)
     n_events = events["event_occurred"].sum()
     pct = 100 * n_events / len(events)
-    print(f"  Event count : {n_events} / {len(events)} ({pct:.1f}%)")
-    print(f"  Censored    : {len(events) - n_events}")
+    logger.info("  Event count : {} / {} ({:.1f}%)", n_events, len(events), pct)
+    logger.info("  Censored    : {}", len(events) - n_events)
 
     events_idx = events.set_index("creative_id")
     prof_data = features.join(events_idx[["event_occurred", "event_day"]], how="inner")
     prof_data = prof_data[prof_data["event_occurred"]].copy()
-    print(f"  Training samples: {len(prof_data)}")
+    logger.info("  Training samples: {}", len(prof_data))
 
     X_prof = _prep_x(prof_data)
     y_prof = prof_data["event_day"].astype(float)
@@ -157,26 +159,26 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 4. Model 2: Fatigue Day (platform-level label from creative_summary)
     # ------------------------------------------------------------------
-    _print_section("Model 2: Fatigue Day (creative_summary.fatigue_day)")
+    _log_section("Model 2: Fatigue Day (creative_summary.fatigue_day)")
     fatigued = summary_df[summary_df["fatigue_day"].notna()].copy()
     fatigued = fatigued.set_index("creative_id")
     fat_data = features.join(fatigued[["fatigue_day"]], how="inner").dropna(subset=["fatigue_day"])
-    print(f"  Fatigued creatives: {len(fat_data)}")
-    print(
-        f"  fatigue_day: mean={fat_data['fatigue_day'].mean():.1f}  "
-        f"median={fat_data['fatigue_day'].median():.1f}  "
-        f"range=[{fat_data['fatigue_day'].min():.0f}, {fat_data['fatigue_day'].max():.0f}]"
+    logger.info("  Fatigued creatives: {}", len(fat_data))
+    logger.info(
+        "  fatigue_day: mean={:.1f}  median={:.1f}  range=[{:.0f}, {:.0f}]",
+        fat_data["fatigue_day"].mean(),
+        fat_data["fatigue_day"].median(),
+        fat_data["fatigue_day"].min(),
+        fat_data["fatigue_day"].max(),
     )
 
     if len(fat_data) < 30:
-        print("  Too few samples — skipping fatigue model.")
+        logger.warning("  Too few samples — skipping fatigue model.")
     else:
         X_fat = _prep_x(fat_data)
         y_fat = fat_data["fatigue_day"].astype(float)
         fat_model, fat_mae = _train_and_eval(X_fat, y_fat, cat_cols, "fatigue")
         _save(fat_model, feature_cols, cat_cols, "fatigue_day", fat_mae, "fatigue_predictor")
-
-    print()
 
 
 if __name__ == "__main__":

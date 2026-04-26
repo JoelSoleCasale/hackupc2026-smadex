@@ -8,6 +8,7 @@ characteristics there without touching any computation code.
 
 from __future__ import annotations
 
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -195,8 +196,6 @@ def _prepare_daily_segment(
 
 
 def _safe_pearsonr(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
-    import warnings
-
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

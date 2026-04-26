@@ -40,12 +40,14 @@ def _card(border_color: str, header: str, body_html: str) -> None:
 
 
 def _navigate_to_ad(creative_id: str, campaign_id: str) -> None:
+    """Set session state to navigate to the ad detail view for the given creative."""
     st.session_state.selected_creative = creative_id
     st.session_state.selected_campaign = campaign_id
     st.session_state.current_view = "ad_detail"
 
 
 def _pause_now_column(your_summary: pd.DataFrame) -> None:
+    """Render the 'Pause Now' column listing the top fatigued creatives by wasted spend."""
     st.markdown(
         f'<div style="font-size:14px;font-weight:800;color:{_RED};margin-bottom:10px">'
         f"🚨 Pause Now</div>",

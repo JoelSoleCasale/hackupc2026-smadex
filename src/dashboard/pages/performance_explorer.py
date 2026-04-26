@@ -55,6 +55,7 @@ def _map_ids(
 
 
 def _init_session_state() -> None:
+    """Initialise session state keys with defaults on first run."""
     defaults = {
         "current_view": "overview",
         "selected_campaign": None,
@@ -157,6 +158,7 @@ def render_performance_explorer() -> None:
 def _render_overview(
     summary_df, daily_df, campaigns_df, peers_summary, advertiser: str, vertical: str, metric: str
 ) -> None:
+    """Render the top-level overview: KPI cards, peer rank, geo heatmap, action center, campaign cards."""
     st.title("Creative Performance Explorer")
 
     your_summary = summary_df[summary_df["advertiser_name"] == advertiser]
