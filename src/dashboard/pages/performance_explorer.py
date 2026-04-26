@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from loguru import logger
 
@@ -9,11 +10,18 @@ from src.dashboard.pages.campaign_view import render_campaign_view
 from src.data.loader import load_campaigns, load_creative_summary, load_daily_stats
 
 
-def _map_ids(summary_df, daily_df) -> dict:
+@st.cache_data
+def _map_ids(
+    summary_df: pd.DataFrame, daily_df: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """Map UUIDs to clean IDs like Campaign 1, Creative 1.1.
 
-    Returns the campaign UUID→name mapping so it can be applied to other DataFrames.
+    Returns (mapped_summary, mapped_daily, campaign_id_map). Cached so the
+    O(n*m*k) scan only runs once per session instead of on every rerun.
     """
+    summary_df = summary_df.copy()
+    daily_df = daily_df.copy()
+
     summary_df["campaign_id"] = summary_df["campaign_id"].astype(str)
     summary_df["creative_id"] = summary_df["creative_id"].astype(str)
     daily_df["campaign_id"] = daily_df["campaign_id"].astype(str)
@@ -38,7 +46,7 @@ def _map_ids(summary_df, daily_df) -> dict:
                 summary_df.loc[summary_df["creative_id"] == creat_id, "creative_id"] = creat_name
                 daily_df.loc[daily_df["creative_id"] == creat_id, "creative_id"] = creat_name
 
-    return campaign_id_map
+    return summary_df, daily_df, campaign_id_map
 
 
 def _init_session_state() -> None:
@@ -56,11 +64,8 @@ def _init_session_state() -> None:
 def render_performance_explorer() -> None:
     _init_session_state()
 
-    summary_df = load_creative_summary()
-    daily_df = load_daily_stats()
     campaigns_df = load_campaigns()
-
-    campaign_id_map = _map_ids(summary_df, daily_df)
+    summary_df, daily_df, campaign_id_map = _map_ids(load_creative_summary(), load_daily_stats())
 
     # Apply campaign ID mapping to campaigns_df
     campaigns_df["campaign_id"] = (

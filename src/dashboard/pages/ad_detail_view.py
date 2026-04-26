@@ -17,6 +17,22 @@ from src.data.loader import load_correlations
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
+
+@st.cache_data
+def _cached_fitness_scores(
+    summary_df: pd.DataFrame,
+    corr_df: pd.DataFrame,
+    target_segments: tuple[tuple[str, str], ...],
+    scorer_name: str,
+) -> pd.Series:
+    scorer_map = {
+        "Linear": LinearFitnessScorer(),
+        "Sharpe": SharpeCorrelationScorer(),
+        "Top-10": TopKFitnessScorer(k=10),
+    }
+    return scorer_map[scorer_name].score_all(summary_df, corr_df, list(target_segments))
+
+
 _BAD_STATUSES = {"underperformer", "fatigued"}
 
 _ATTRIBUTE_FIELDS = [
@@ -25,11 +41,7 @@ _ATTRIBUTE_FIELDS = [
     ("emotional_tone", "Emotional Tone"),
     ("language", "Language"),
     ("hook_type", "Hook Type"),
-    ("cta_text", "CTA Text"),
-    ("headline", "Headline"),
     ("duration_sec", "Duration (s)"),
-    ("width", "Width"),
-    ("height", "Height"),
     ("has_gameplay", "Has Gameplay"),
     ("has_ugc_style", "Has UGC Style"),
     ("has_price", "Has Price"),
@@ -280,7 +292,7 @@ def _render_alternatives(
     alternatives: list[tuple[str, str, pd.Series]] = []
 
     for scorer_name, scorer, scorer_desc in _SCORERS:
-        scores = scorer.score_all(summary_df, corr_df, target_segments)
+        scores = _cached_fitness_scores(summary_df, corr_df, tuple(target_segments), scorer_name)
         candidates = scores[~scores.index.isin(seen_ids)]
         if candidates.empty:
             logger.warning("_render_alternatives: no candidates left for scorer={}", scorer_name)
