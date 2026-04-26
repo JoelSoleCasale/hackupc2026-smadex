@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +16,7 @@ from src.analysis.fitness_scorer import (
     TopKFitnessScorer,
 )
 from src.data.loader import load_correlations
+from src.models.predict import MAE_DAYS, predict_fatigue_days
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -110,6 +112,55 @@ def _render_tags_html(tags: list[tuple[str, str]]) -> str:
 
 def _asset_path(asset_file: str) -> Path:
     return _PROJECT_ROOT / "data" / asset_file
+
+
+def _daily_roas_agg(daily_df: pd.DataFrame, creative_id: str) -> pd.DataFrame:
+    """Aggregate daily ROAS across country/OS for a single creative."""
+    agg = (
+        daily_df[daily_df["creative_id"] == creative_id]
+        .groupby("days_since_launch", as_index=False)
+        .agg(revenue=("revenue_usd", "sum"), spend=("spend_usd", "sum"))
+    )
+    agg["daily_roas"] = agg["revenue"] / agg["spend"].replace(0, float("nan"))
+    return agg.sort_values("days_since_launch")
+
+
+def _roas_chart(agg: pd.DataFrame, predicted_fatigue_day: float | None) -> go.Figure:
+    """ROAS-over-time line chart with break-even line and optional fatigue marker."""
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=agg["days_since_launch"],
+            y=agg["daily_roas"],
+            mode="lines+markers",
+            name="Daily ROAS",
+            line=dict(color="#4C78A8", width=2),
+            marker=dict(size=5),
+        )
+    )
+    fig.add_hline(
+        y=1.0,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="Break-even (ROAS = 1)",
+        annotation_position="bottom right",
+    )
+    if predicted_fatigue_day is not None and not math.isnan(predicted_fatigue_day):
+        fig.add_vline(
+            x=predicted_fatigue_day,
+            line_dash="dot",
+            line_color="orange",
+            annotation_text=f"Predicted fatigue: day {int(predicted_fatigue_day)}",
+            annotation_position="top left",
+        )
+    fig.update_layout(
+        xaxis_title="Days Since Launch",
+        yaxis_title="ROAS",
+        height=260,
+        margin=dict(l=0, r=0, t=30, b=0),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
 
 
 def _explainability_tags(
@@ -503,7 +554,7 @@ def render_ad_detail_view(
     campaigns_df:
         campaigns.csv data (ID-mapped), used to derive target audience segments.
     daily_df:
-        Full daily stats (all advertisers, ID-mapped), used for time-series plots.
+        Full daily stats (all advertisers, ID-mapped), used for time-series plots and fatigue prediction.
     """
     # Back navigation
     if st.button("← Back to Campaign"):
@@ -553,6 +604,24 @@ def render_ad_detail_view(
         status_emoji = "😊" if status not in _BAD_STATUSES else "😔"
         st.markdown(f"{status_emoji} **{status.replace('_', ' ').title()}**")
 
+    # --- Fatigue prediction (computed once for all creatives, cached) ---
+    pred_fatigue_day: float | None = None
+    days_running: int = 0
+    daily_agg: pd.DataFrame = pd.DataFrame()
+
+    if daily_df is not None and not daily_df.empty:
+        daily_agg = _daily_roas_agg(daily_df, creative_id)
+        if not daily_agg.empty:
+            days_running = int(daily_agg["days_since_launch"].max())
+
+        all_preds = predict_fatigue_days(daily_df, summary_df)
+        raw = all_preds.get(creative_id)
+        if raw is not None:
+            # .get() returns a Series when index has duplicates (same mapped ID across advertisers)
+            scalar = float(raw.iloc[0]) if isinstance(raw, pd.Series) else float(raw)
+            if not math.isnan(scalar):
+                pred_fatigue_day = scalar
+
     with right:
         # --- Metrics ---
         st.subheader("Metrics")
@@ -569,6 +638,26 @@ def render_ad_detail_view(
         with m4:
             roas = row.get("overall_roas", None)
             st.metric("ROAS", f"{float(roas):.2f}×" if pd.notna(roas) else "N/A")
+
+        # Only show fatigue prediction and ROAS chart after 7 days of data exist
+        if days_running >= 7:
+            fa1, fa2 = st.columns(2)
+            with fa1:
+                if pred_fatigue_day is not None:
+                    st.metric(
+                        "Est. Profitability End",
+                        f"day {pred_fatigue_day:.0f}",
+                        delta=f"±{round(MAE_DAYS)} days",
+                        delta_color="off",
+                    )
+            with fa2:
+                st.metric("Days Active", f"{days_running} days")
+
+            if not daily_agg.empty:
+                st.plotly_chart(
+                    _roas_chart(daily_agg, pred_fatigue_day),
+                    use_container_width=True,
+                )
 
         st.divider()
 
