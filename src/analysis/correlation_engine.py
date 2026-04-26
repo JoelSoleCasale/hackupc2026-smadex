@@ -52,10 +52,7 @@ CREATIVE_ATTRIBUTES: dict[str, Literal["numeric", "binary", "categorical"]] = {
 USER_CHARACTERISTICS: dict[str, dict] = {
     "target_age_segment": {"source": "campaign", "col": "target_age_segment"},
     "target_os": {"source": "campaign", "col": "target_os"},
-    "vertical": {"source": "campaign", "col": "vertical"},
-    "objective": {"source": "campaign", "col": "objective"},
     "country": {"source": "daily", "col": "country"},
-    "os": {"source": "daily", "col": "os"},
 }
 
 PERFORMANCE_METRICS: list[str] = ["perf_score", "overall_ctr", "overall_cvr", "overall_roas"]
@@ -89,12 +86,17 @@ def _prepare_campaign_segment(
     target_metric: str,
     min_creatives: int,
 ) -> pd.DataFrame | None:
-    """Filter creative_summary to creatives whose campaign matches col==value."""
+    """Filter creative_summary to creatives whose campaign matches col==value.
+
+    For target_os, campaigns with "Both" are included in both Android and iOS
+    segments because they run on either platform.
+    """
+    match_values = [value, "Both"] if col == "target_os" else [value]
     if col in summary.columns:
-        mask = summary[col] == value
+        mask = summary[col].isin(match_values)
         segment = summary.loc[mask].copy()
     else:
-        matching = campaigns.loc[campaigns[col] == value, "campaign_id"]
+        matching = campaigns.loc[campaigns[col].isin(match_values), "campaign_id"]
         segment = summary.loc[summary["campaign_id"].isin(matching)].copy()
 
     if len(segment) < min_creatives:
@@ -437,7 +439,12 @@ class CorrelationEngine:
         col = char_cfg["col"]
         if source == "campaign":
             if col in self._campaigns.columns:
-                return sorted(self._campaigns[col].dropna().unique().tolist())
+                values = sorted(self._campaigns[col].dropna().unique().tolist())
+                # "Both" means the campaign targets Android AND iOS — exclude it as
+                # its own segment and instead fold those creatives into each platform.
+                if col == "target_os":
+                    values = [v for v in values if v != "Both"]
+                return values
         elif source == "summary":
             if col in self._summary.columns:
                 return sorted(self._summary[col].dropna().unique().tolist())

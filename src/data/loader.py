@@ -96,6 +96,20 @@ def load_daily_stats() -> pd.DataFrame:
 
 
 @st.cache_data
+def load_correlations(method: str = "statistical", metric: str = "perf_score") -> pd.DataFrame:
+    """Load a pre-computed correlation parquet for a given method/metric combo.
+
+    Available methods: "statistical", "rf_signed"
+    Available metrics: "perf_score", "overall_ctr", "overall_cvr", "overall_roas"
+    """
+    path = _DATA_DIR / "correlations" / f"correlations_{method}_{metric}.parquet"
+    logger.info("Loading correlations from {}", path)
+    df = pd.read_parquet(path)
+    logger.info("Correlations shape: {}", df.shape)
+    return df
+
+
+@st.cache_data
 def load_campaigns() -> pd.DataFrame:
     """Load campaigns.csv with campaign-level metadata.
 
