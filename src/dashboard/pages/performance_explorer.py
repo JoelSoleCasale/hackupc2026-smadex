@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from loguru import logger
 
+from src.dashboard.components.action_center import render_action_center
 from src.dashboard.components.campaign_cards import render_campaign_cards
 from src.dashboard.components.comparison_charts import render_geo_heatmap, render_peer_rank_bar
 from src.dashboard.components.kpi_cards import render_kpi_cards
@@ -184,6 +185,10 @@ def _render_overview(
             render_geo_heatmap(your_summary, your_daily, filters, peers_summary, peers_daily),
             use_container_width=True,
         )
+
+    st.divider()
+
+    render_action_center(your_summary)
 
     st.divider()
 

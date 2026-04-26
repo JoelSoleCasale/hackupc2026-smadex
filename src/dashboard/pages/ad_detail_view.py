@@ -748,8 +748,7 @@ def render_ad_detail_view(
         with col2:
             st.plotly_chart(_render_os_breakdown(daily_df, creative_id), use_container_width=True)
 
-    if status in _BAD_STATUSES:
-        st.divider()
-        _render_alternatives(
-            summary_df, campaigns_df, campaign_id, creative_id, row, corr_df, advertiser
-        )
+    st.divider()
+    _render_alternatives(
+        summary_df, campaigns_df, campaign_id, creative_id, row, corr_df, advertiser
+    )
