@@ -44,7 +44,11 @@ def _map_ids(
             for j, creat_id in enumerate(creatives, 1):
                 creat_name = f"Creative {i}.{j}"
                 summary_df.loc[summary_df["creative_id"] == creat_id, "creative_id"] = creat_name
-                daily_df.loc[daily_df["creative_id"] == creat_id, "creative_id"] = creat_name
+                # Tag daily rows with advertiser_name BEFORE renaming the UUID,
+                # so the chart can filter to a single advertiser's creative later.
+                daily_mask = daily_df["creative_id"] == creat_id
+                daily_df.loc[daily_mask, "advertiser_name"] = adv
+                daily_df.loc[daily_mask, "creative_id"] = creat_name
 
     return summary_df, daily_df, campaign_id_map
 

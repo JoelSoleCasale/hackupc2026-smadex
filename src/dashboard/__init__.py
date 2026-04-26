@@ -1,6 +1,7 @@
 import streamlit as st
 
 from src.dashboard.pages.performance_explorer import render_performance_explorer
+from src.dashboard.theme import inject_css
 
 
 def render() -> None:
@@ -9,6 +10,7 @@ def render() -> None:
         layout="wide",
         page_icon="📊",
     )
+    inject_css()
     pages = [
         st.Page(render_performance_explorer, title="Creative Performance", icon="📊"),
     ]

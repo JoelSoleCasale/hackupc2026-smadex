@@ -11,33 +11,26 @@ from loguru import logger
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 _GOOD_STATUSES = {"top_performer", "stable"}
-_BAD_STATUSES = {"underperformer", "fatigued"}
+
+_STATUS_COLORS = {
+    "top_performer": "#16a34a",
+    "stable": "#2563eb",
+    "underperformer": "#d97706",
+    "fatigued": "#dc2626",
+}
+_STATUS_EMOJI = {
+    "top_performer": "😊",
+    "stable": "😊",
+    "underperformer": "😔",
+    "fatigued": "😔",
+}
 
 
 def _asset_path(asset_file: str) -> Path:
     return _PROJECT_ROOT / "data" / asset_file
 
 
-def _smiley(status: str) -> str:
-    if status in _GOOD_STATUSES:
-        return "😊"
-    return "😔"
-
-
-def _status_color(status: str) -> str:
-    if status in _GOOD_STATUSES:
-        return "green"
-    return "red"
-
-
 def render_creative_grid(campaign_summary: pd.DataFrame) -> None:
-    """Render a grid of creatives with smiley/sad performance indicators.
-
-    Parameters
-    ----------
-    campaign_summary:
-        creative_summary rows for the selected campaign (already ID-mapped).
-    """
     if campaign_summary.empty:
         st.info("No creatives found for this campaign.")
         return
@@ -46,7 +39,11 @@ def render_creative_grid(campaign_summary: pd.DataFrame) -> None:
     n_cols = 6
     rows = [sorted_df.iloc[i : i + n_cols] for i in range(0, len(sorted_df), n_cols)]
 
-    st.subheader("Creatives")
+    st.markdown(
+        '<div style="border-left:4px solid #881CA6;padding-left:10px;margin:16px 0 10px">'
+        '<span style="font-size:17px;font-weight:700">Creatives</span></div>',
+        unsafe_allow_html=True,
+    )
 
     for row_df in rows:
         cols = st.columns(n_cols)
@@ -57,33 +54,35 @@ def render_creative_grid(campaign_summary: pd.DataFrame) -> None:
             asset_file = creative_row.get("asset_file", "")
             img_path = _asset_path(asset_file) if asset_file else Path("/nonexistent")
 
-            smiley = _smiley(status)
-            color = _status_color(status)
+            color = _STATUS_COLORS.get(status, "#6b7280")
+            emoji = _STATUS_EMOJI.get(status, "😐")
 
             with col:
                 with st.container(border=True):
+                    # Status colour strip at top
+                    st.markdown(
+                        f'<div style="height:4px;background:{color};'
+                        f'border-radius:4px;margin-bottom:6px"></div>',
+                        unsafe_allow_html=True,
+                    )
                     if img_path.exists():
                         st.image(str(img_path), use_container_width=True)
                     else:
                         st.markdown(
-                            "<div style='height:120px;background:#eee;display:flex;"
-                            "align-items:center;justify-content:center;border-radius:4px'>"
-                            "No image</div>",
+                            '<div style="height:100px;background:#f5e9f9;display:flex;'
+                            "align-items:center;justify-content:center;border-radius:4px;"
+                            'color:#881CA6;font-size:11px">No image</div>',
                             unsafe_allow_html=True,
                         )
 
-                    bottom_left, bottom_right = st.columns([1, 2])
-                    with bottom_left:
-                        st.markdown(
-                            f"<span style='font-size:1.4rem'>{smiley}</span>",
-                            unsafe_allow_html=True,
-                        )
-                    with bottom_right:
-                        st.markdown(
-                            f"<span style='color:{color};font-size:0.85rem'>"
-                            f"**{creative_id}**<br>{perf:.3f}</span>",
-                            unsafe_allow_html=True,
-                        )
+                    st.markdown(
+                        f'<div style="display:flex;align-items:center;justify-content:space-between;'
+                        f'margin-top:4px">'
+                        f'<span style="font-size:1.2rem">{emoji}</span>'
+                        f'<span style="color:{color};font-size:11px;font-weight:700">'
+                        f"{perf:.3f}</span></div>",
+                        unsafe_allow_html=True,
+                    )
 
                     if st.button(
                         "View Ad", key=f"creative_btn_{creative_id}", use_container_width=True
